@@ -3,6 +3,16 @@ numpy
 scikit_learn
 seaborn
 setuptools
+mlflow
+notebook
+matplotlib
+python-box
+pyYAML
+ensure
+joblib
+types-PyYAML
+Flask
+Flask-Cors
 
 
 -e .
