@@ -30,7 +30,7 @@ def get_requirements() -> List[str]:
 
     return requirement_list
 setup(
-    name='NetworkSecurity',
+    name='ML_Regression',
     version='0.1.0',
     author='Hari',
     author_email="hariehkr@gmail.com",
