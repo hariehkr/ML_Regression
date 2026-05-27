@@ -1,0 +1,8 @@
+pandas
+numpy
+scikit_learn
+seaborn
+setuptools
+
+
+-e .
