@@ -1,81 +1,82 @@
-import zipfile
-import sys, os
+import os,sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[1])) # Modify the path dynamically
+#os.chdir("../")
+import pandas as pd
+data=pd.read_csv("./artifacts/data_ingestion/winequality-red.csv")
+
 from dataclasses import dataclass
 from pathlib import Path
 from src.datascience.constants import *
 from src.datascience.utils.common import read_yaml, create_directories
-
-import os
-import urllib.request as request
-from src.datascience import  logger
+from src.datascience import logger
 
 
 @dataclass
-class DataIngestionConfig:
-    root_dir: Path
-    source_URL: str
-    local_data_file: Path
-    unzip_dir: Path
-print('excuted')
-
+class DataValidationConfig:
+    root_dir:Path
+    STATUS_FILE:str
+    unzip_data_dir:Path
+    all_schema:dict
 
 class ConfigurationManager:
-    def __init__(self,
-                 config_filepath= CONFIG_FILE_PATH,
-                 params_filepath = PARAMS_FILE_PATH,
-                 schema_filepath = SCHEMA_FILE_PATH):
+    def __init__(
+        self,
+        config_filepath = CONFIG_FILE_PATH,
+        params_filepath = PARAMS_FILE_PATH,
+        schema_filepath = SCHEMA_FILE_PATH):
+
         self.config = read_yaml(config_filepath)
         self.params = read_yaml(params_filepath)
         self.schema = read_yaml(schema_filepath)
 
         create_directories([self.config.artifacts_root])
 
-    def get_data_ingestion_config(self) -> DataIngestionConfig:
-        config = self.config.data_ingestion
+    def get_data_validation_config(self) -> DataValidationConfig:
+        config = self.config.data_validation
+        schema = self.schema.COLUMNS
+
         create_directories([config.root_dir])
 
-        data_ingestion_config = DataIngestionConfig(
-            root_dir= config.root_dir,
-            source_URL= config.source_URL,
-            local_data_file= config.local_data_file,
-            unzip_dir= config.unzip_dir,
-        )
-        return data_ingestion_config
-print('excuted')
+        data_validation_config = DataValidationConfig(
+            root_dir=config.root_dir,
+            STATUS_FILE=config.STATUS_FILE,
+            unzip_data_dir = config.unzip_data_dir,
+            all_schema=schema)
 
-## component_Data Ingestion
-class DataIngestion:
-    def __init__(self, config: DataIngestionConfig):
+        return data_validation_config
+    
+    
+class DataValidation:
+    def __index__(self, config: DataValidationConfig):
         self.config = config
 
-    # downloading the zip file
-    def download_file(self):
-        if not os.path.exists(self.config.local_data_file):
-            filename, headers = request.urlretrieve(url=self.config.source_URL,
-                                                    filename=self.config.local_data_file)
-            logger.info(f"Downloaded file {filename} file with following info:\n {headers}")
-        else:
-            logger.info(f"File  already exists")
+    def validate_all_columns(self)-> bool:
+        try:
+            validation_status = None
 
-    def extract_zip_file(self):
-        """
-        zip_file_path : str
-        extracts the zip file into the data directory
-        function returns None
-        """
-        unzip_dir = self.config.unzip_dir
-        os.makedirs(unzip_dir, exist_ok=True)
-        with zipfile.ZipFile(self.config.local_data_file, 'r') as zip_ref:
-            zip_ref.extractall(unzip_dir)
+            data = pd.read_csv(self.config.unzip_data_dir)
+            all_columns = list(data.columns)
+            all_schema = self.config.all_schema.keys()
 
+            for col in all_columns:
+                if col not in all_schema:
+                    validation_status = False
+                    with open(self.config.STATUS_FILE,'w') as status_file:
+                        status_file.write(f"Validation status: {validation_status}")
+                else:
+                    validation_status = True
+                    with open(self.config.STATUS_FILE,'w') as status_file:
+                        status_file.write(f"Validation status: {validation_status}")
+            return validation_status
+
+        except Exception as e:
+            raise e
 try:
     config = ConfigurationManager()
-    data_ingestion_config = config.get_data_ingestion_config()
-    data_ingestion = DataIngestion(config=data_ingestion_config)
-    data_ingestion.download_file()
-    data_ingestion.extract_zip_file()
+    data_validation_config = config.get_data_validation_config()
+    data_validation = DataValidation(config=data_validation_config)
+    data_validation.validate_all_columns()
 
 except Exception as e:
     raise e
